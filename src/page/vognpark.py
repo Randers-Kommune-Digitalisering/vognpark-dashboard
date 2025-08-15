@@ -69,9 +69,9 @@ def get_vognpark_overview():
             filtered_data = data.copy()
             if search_query.strip():
                 filtered_data = filtered_data[
-                    filtered_data["Reg. nr."].str.contains(search_query, case=False, na=False) |
-                    filtered_data["Mærke"].str.contains(search_query, case=False, na=False) |
-                    filtered_data["Model"].str.contains(search_query, case=False, na=False)
+                    filtered_data["Reg. nr."].str.contains(search_query, case=False, na=False)
+                    | filtered_data["Mærke"].str.contains(search_query, case=False, na=False)
+                    | filtered_data["Model"].str.contains(search_query, case=False, na=False)
                 ]
             if level_1_filter != "Alle":
                 filtered_data = filtered_data[filtered_data["Level_1"] == level_1_filter]
