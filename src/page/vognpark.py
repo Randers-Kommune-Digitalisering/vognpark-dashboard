@@ -97,7 +97,7 @@ def get_vognpark_overview():
                     filtered_data = filtered_data[filtered_data["Træk"] == traek_filter]
 
             st.markdown(
-                f"<span style='background:#e0e0e0; border-radius:8px; padding:4px 12px; font-size:1rem; margin-left:8px;'>:car: :blue[{len(filtered_data)}] køretøjer fundet</span>",
+                f"<span style='background:#e0e0e0; border-radius:8px; padding:4px 12px; font-size:1rem; margin-left:8px;'>🚗 :blue[{len(filtered_data)}] køretøjer fundet</span>",
                 unsafe_allow_html=True
             )
 
