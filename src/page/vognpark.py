@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 from utils.database_connection import get_vognpark_db
-from utils.util import get_drivmiddel_icon, get_traek_icon
+from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level
 
 db_client = get_vognpark_db()
 
@@ -109,6 +109,7 @@ def get_vognpark_overview():
                 regnr = row['Reg. nr.'] or 'Ikke angivet'
                 maerke = row['Mærke'] if pd.notna(row['Mærke']) and row['Mærke'] != "" else None
                 model = row['Model'] if pd.notna(row['Model']) and row['Model'] != "" else None
+                most_specific_level = get_most_specific_level(row)
 
                 title = f"**{regnr}**\n{maerke or ''} {model or ''}".strip()
 
@@ -132,6 +133,7 @@ def get_vognpark_overview():
                                 <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke angivet'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke angivet'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke angivet'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Enhed:</strong> {most_specific_level}</p>
                             </div>
                             <div style="flex:0.5; text-align:center;">
                                 <p style="margin:0.2rem 0;"><strong>Drivmiddel:</strong> {get_drivmiddel_icon(row['Drivmiddel'])}</p>
