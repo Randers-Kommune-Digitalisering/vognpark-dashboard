@@ -26,3 +26,13 @@ def get_most_specific_level(row):
         if pd.notna(value) and value != "":
             return f" {value}"
     return "Ingen hierarki angivet"
+
+
+level_1_display_map = {
+    "Børn & Skole": "Børn & Skole",
+    "Miljø og Teknik": "Miljø & Teknik",
+    "Randers Kommune": "Biler, hvor tilhørsforhold er uvist",
+    "Social og arbejdsmarked": "Social & Arbejdsmarked",
+    "Stabene": "Stabene",
+    "Sundhed, kultur og omsorg": "Sundhed, Kultur & Omsorg"
+}
