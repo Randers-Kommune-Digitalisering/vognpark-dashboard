@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 from utils.database_connection import get_vognpark_db
-from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level
+from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map
 
 db_client = get_vognpark_db()
 
@@ -20,14 +20,14 @@ def get_vognpark_overview():
             results = []
             with st.spinner('Indlæser vognpark data...'):
                 query = """
-                SELECT "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
-                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model"
+                SELECT "Level_1", "Level_2", "Level_3", "Level_4",
+                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
                 FROM vognpark_data
                 """
                 result = db_client.execute_sql(query)
                 columns = [
-                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
-                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model"
+                    "Level_1", "Level_2", "Level_3", "Level_4",
+                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
                 ]
                 if result is not None:
                     results.append(pd.DataFrame(result, columns=columns))
@@ -49,21 +49,33 @@ def get_vognpark_overview():
 
                 search_query = st.text_input("Søg køretøj", value="", placeholder="Søg fx Reg.Nr, Mærke", label_visibility="collapsed")
 
-                hierarki_1_options = sorted(data["Level_1"].dropna().unique().tolist())
-                hierarki_1_filter = st.selectbox("Hierarki 1", options=["Alle"] + hierarki_1_options)
-                hierarki_2_options = sorted(data[data["Level_1"] == hierarki_1_filter]["Level_2"].dropna().unique().tolist()) if hierarki_1_filter != "Alle" else []
-                hierarki_2_filter = st.selectbox("Hierarki 2", options=["Alle"] + hierarki_2_options) if hierarki_1_filter != "Alle" else "Alle"
-                hierarki_3_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter)]["Level_3"].dropna().unique().tolist()) if hierarki_2_filter != "Alle" else []
-                hierarki_3_filter = st.selectbox("Hierarki 3", options=["Alle"] + hierarki_3_options) if hierarki_2_filter != "Alle" else "Alle"
-                hierarki_4_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter)]["Level_4"].dropna().unique().tolist()) if hierarki_3_filter != "Alle" else []
-                hierarki_4_filter = st.selectbox("Hierarki 4", options=["Alle"] + hierarki_4_options) if hierarki_3_filter != "Alle" else "Alle"
-                hierarki_5_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter) & (data["Level_4"] == hierarki_4_filter)]["Level_5"].dropna().unique().tolist()) if hierarki_4_filter != "Alle" else []
-                hierarki_5_filter = st.selectbox("Hierarki 5", options=["Alle"] + hierarki_5_options) if hierarki_4_filter != "Alle" else "Alle"
+                hierarki_1_options_raw = sorted(data["Level_1"].dropna().unique().tolist())
+                hierarki_1_options = [level_1_display_map.get(x, x) for x in hierarki_1_options_raw]
+                hierarki_1_filter = st.selectbox("Forvaltning", options=["Alle"] + hierarki_1_options)
+
+                display_to_raw = {v: k for k, v in level_1_display_map.items()}
+                selected_level_1_raw = display_to_raw.get(hierarki_1_filter, hierarki_1_filter)
+
+                enhed_data = data if hierarki_1_filter == "Alle" else data[data["Level_1"] == selected_level_1_raw]
+
+                enhed_options = []
+                for _, row in enhed_data.iterrows():
+                    if pd.notna(row["Level_4"]) and row["Level_4"] != "":
+                        enhed_options.append(row["Level_4"])
+                    elif pd.notna(row["Level_3"]) and row["Level_3"] != "":
+                        enhed_options.append(row["Level_3"])
+                    elif pd.notna(row["Level_2"]) and row["Level_2"] != "":
+                        enhed_options.append(row["Level_2"])
+                enhed_options = sorted(set(enhed_options))
+
+                enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options)
 
                 art_options = sorted(data["Art"].dropna().unique().tolist())
-                art_filter = st.selectbox("Art", options=["Alle"] + art_options)
+                art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art")
+
                 drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
-                drivmiddel_filter = st.selectbox("Drivmiddel", options=["Alle"] + drivmiddel_options)
+                drivmiddel_filter = st.multiselect("Drivmiddel", options=drivmiddel_options, default=[], placeholder="Vælg drivmiddel")
+
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
                 traek_options_display = ["Alle"] + ["Ja" if x is True else "Nej" if x is False else str(x) for x in traek_options]
                 traek_filter = st.selectbox("Træk", options=traek_options_display)
@@ -75,26 +87,24 @@ def get_vognpark_overview():
                     filtered_data["Mærke"].str.contains(search_query, case=False, na=False)
                 ]
             if hierarki_1_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_1"] == hierarki_1_filter]
-            if hierarki_2_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_2"] == hierarki_2_filter]
-            if hierarki_3_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_3"] == hierarki_3_filter]
-            if hierarki_4_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_4"] == hierarki_4_filter]
-            if hierarki_5_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_5"] == hierarki_5_filter]
-            if art_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Art"] == art_filter]
-            if drivmiddel_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Drivmiddel"] == drivmiddel_filter]
+                filtered_data = filtered_data[filtered_data["Level_1"] == selected_level_1_raw]
+            if enhed_filter != "Alle":
+                filtered_data = filtered_data[
+                    ((filtered_data["Level_4"] == enhed_filter) & filtered_data["Level_4"].notna() & (filtered_data["Level_4"] != "")) |
+                    ((filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == "")) &
+                     (filtered_data["Level_3"] == enhed_filter) & filtered_data["Level_3"].notna() & (filtered_data["Level_3"] != "")) |
+                    ((filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == "")) &
+                     (filtered_data["Level_3"].isna() | (filtered_data["Level_3"] == "")) &
+                     (filtered_data["Level_2"] == enhed_filter) & filtered_data["Level_2"].notna() & (filtered_data["Level_2"] != ""))
+                ]
+            if art_filter:
+                filtered_data = filtered_data[filtered_data["Art"].isin(art_filter)]
+            if drivmiddel_filter:
+                filtered_data = filtered_data[filtered_data["Drivmiddel"].isin(drivmiddel_filter)]
             if traek_filter != "Alle":
-                if traek_filter == "Nej":
-                    filtered_data = filtered_data[filtered_data["Træk"] == False]
-                elif traek_filter == "Ja":
-                    filtered_data = filtered_data[filtered_data["Træk"] == True]
-                else:
-                    filtered_data = filtered_data[filtered_data["Træk"] == traek_filter]
+                filtered_data = filtered_data[
+                    filtered_data["Træk"].apply(lambda x: "Ja" if x is True else "Nej" if x is False else str(x)) == traek_filter
+                ]
 
             st.markdown(
                 f"<span style='background:#e0e0e0; border-radius:8px; padding:4px 12px; font-size:1rem; margin-left:8px;'>🚗 :blue[{len(filtered_data)}] køretøjer fundet</span>",
@@ -130,12 +140,14 @@ def get_vognpark_overview():
                         ">
                             <div style="flex:1;">
                                 <p style="margin:0.2rem 0;"><strong>Reg. nr.:</strong> {regnr}</p>
-                                <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke angivet'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke angivet'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke angivet'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Forvaltning:</strong> {level_1_display_map.get(row['Level_1'], row['Level_1'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Enhed:</strong> {most_specific_level}</p>
+                                <p style="margin:0.2rem 0;"><strong>Ansvarlige:</strong> {row['Primær bruger'] or 'Ikke oplyst'}</p>
                             </div>
                             <div style="flex:0.5; text-align:center;">
+                                <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Drivmiddel:</strong> {get_drivmiddel_icon(row['Drivmiddel'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Træk:</strong> {get_traek_icon(row['Træk'])}</p>
                             </div>
