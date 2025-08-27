@@ -71,9 +71,11 @@ def get_vognpark_overview():
                 enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options)
 
                 art_options = sorted(data["Art"].dropna().unique().tolist())
-                art_filter = st.selectbox("Art", options=["Alle"] + art_options)
+                art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art")
+
                 drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
-                drivmiddel_filter = st.selectbox("Drivmiddel", options=["Alle"] + drivmiddel_options)
+                drivmiddel_filter = st.multiselect("Drivmiddel", options=drivmiddel_options, default=[], placeholder="Vælg drivmiddel")
+
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
                 traek_options_display = ["Alle"] + ["Ja" if x is True else "Nej" if x is False else str(x) for x in traek_options]
                 traek_filter = st.selectbox("Træk", options=traek_options_display)
@@ -95,17 +97,14 @@ def get_vognpark_overview():
                      (filtered_data["Level_3"].isna() | (filtered_data["Level_3"] == "")) &
                      (filtered_data["Level_2"] == enhed_filter) & filtered_data["Level_2"].notna() & (filtered_data["Level_2"] != ""))
                 ]
-            if art_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Art"] == art_filter]
-            if drivmiddel_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Drivmiddel"] == drivmiddel_filter]
+            if art_filter:
+                filtered_data = filtered_data[filtered_data["Art"].isin(art_filter)]
+            if drivmiddel_filter:
+                filtered_data = filtered_data[filtered_data["Drivmiddel"].isin(drivmiddel_filter)]
             if traek_filter != "Alle":
-                if traek_filter == "Nej":
-                    filtered_data = filtered_data[filtered_data["Træk"] == False]
-                elif traek_filter == "Ja":
-                    filtered_data = filtered_data[filtered_data["Træk"] == True]
-                else:
-                    filtered_data = filtered_data[filtered_data["Træk"] == traek_filter]
+                filtered_data = filtered_data[
+                    filtered_data["Træk"].apply(lambda x: "Ja" if x is True else "Nej" if x is False else str(x)) == traek_filter
+                ]
 
             st.markdown(
                 f"<span style='background:#e0e0e0; border-radius:8px; padding:4px 12px; font-size:1rem; margin-left:8px;'>🚗 :blue[{len(filtered_data)}] køretøjer fundet</span>",
