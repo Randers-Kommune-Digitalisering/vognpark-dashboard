@@ -20,14 +20,14 @@ def get_vognpark_overview():
             results = []
             with st.spinner('Indlæser vognpark data...'):
                 query = """
-                SELECT "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
-                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model"
+                SELECT "Level_1", "Level_2", "Level_3", "Level_4",
+                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
                 FROM vognpark_data
                 """
                 result = db_client.execute_sql(query)
                 columns = [
-                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
-                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model"
+                    "Level_1", "Level_2", "Level_3", "Level_4",
+                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
                 ]
                 if result is not None:
                     results.append(pd.DataFrame(result, columns=columns))
@@ -141,12 +141,14 @@ def get_vognpark_overview():
                         ">
                             <div style="flex:1;">
                                 <p style="margin:0.2rem 0;"><strong>Reg. nr.:</strong> {regnr}</p>
-                                <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke angivet'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke angivet'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke angivet'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Forvaltning:</strong> {level_1_display_map.get(row['Level_1'], row['Level_1'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Enhed:</strong> {most_specific_level}</p>
+                                <p style="margin:0.2rem 0;"><strong>Ansvarlige:</strong> {row['Primær bruger'] or 'Ikke oplyst'}</p>
                             </div>
                             <div style="flex:0.5; text-align:center;">
+                                <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Drivmiddel:</strong> {get_drivmiddel_icon(row['Drivmiddel'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Træk:</strong> {get_traek_icon(row['Træk'])}</p>
                             </div>
