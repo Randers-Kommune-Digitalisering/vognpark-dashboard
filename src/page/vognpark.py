@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 from utils.database_connection import get_vognpark_db
-from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level
+from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map
 
 db_client = get_vognpark_db()
 
@@ -49,15 +49,20 @@ def get_vognpark_overview():
 
                 search_query = st.text_input("Søg køretøj", value="", placeholder="Søg fx Reg.Nr, Mærke", label_visibility="collapsed")
 
-                hierarki_1_options = sorted(data["Level_1"].dropna().unique().tolist())
-                hierarki_1_filter = st.selectbox("Hierarki 1", options=["Alle"] + hierarki_1_options)
-                hierarki_2_options = sorted(data[data["Level_1"] == hierarki_1_filter]["Level_2"].dropna().unique().tolist()) if hierarki_1_filter != "Alle" else []
+                hierarki_1_options_raw = sorted(data["Level_1"].dropna().unique().tolist())
+                hierarki_1_options = [level_1_display_map.get(x, x) for x in hierarki_1_options_raw]
+                hierarki_1_filter = st.selectbox("Forvaltning", options=["Alle"] + hierarki_1_options)
+
+                display_to_raw = {v: k for k, v in level_1_display_map.items()}
+                selected_level_1_raw = display_to_raw.get(hierarki_1_filter, hierarki_1_filter)
+
+                hierarki_2_options = sorted(data[data["Level_1"] == selected_level_1_raw]["Level_2"].dropna().unique().tolist()) if hierarki_1_filter != "Alle" else []
                 hierarki_2_filter = st.selectbox("Hierarki 2", options=["Alle"] + hierarki_2_options) if hierarki_1_filter != "Alle" else "Alle"
-                hierarki_3_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter)]["Level_3"].dropna().unique().tolist()) if hierarki_2_filter != "Alle" else []
+                hierarki_3_options = sorted(data[(data["Level_1"] == selected_level_1_raw) & (data["Level_2"] == hierarki_2_filter)]["Level_3"].dropna().unique().tolist()) if hierarki_2_filter != "Alle" else []
                 hierarki_3_filter = st.selectbox("Hierarki 3", options=["Alle"] + hierarki_3_options) if hierarki_2_filter != "Alle" else "Alle"
-                hierarki_4_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter)]["Level_4"].dropna().unique().tolist()) if hierarki_3_filter != "Alle" else []
+                hierarki_4_options = sorted(data[(data["Level_1"] == selected_level_1_raw) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter)]["Level_4"].dropna().unique().tolist()) if hierarki_3_filter != "Alle" else []
                 hierarki_4_filter = st.selectbox("Hierarki 4", options=["Alle"] + hierarki_4_options) if hierarki_3_filter != "Alle" else "Alle"
-                hierarki_5_options = sorted(data[(data["Level_1"] == hierarki_1_filter) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter) & (data["Level_4"] == hierarki_4_filter)]["Level_5"].dropna().unique().tolist()) if hierarki_4_filter != "Alle" else []
+                hierarki_5_options = sorted(data[(data["Level_1"] == selected_level_1_raw) & (data["Level_2"] == hierarki_2_filter) & (data["Level_3"] == hierarki_3_filter) & (data["Level_4"] == hierarki_4_filter)]["Level_5"].dropna().unique().tolist()) if hierarki_4_filter != "Alle" else []
                 hierarki_5_filter = st.selectbox("Hierarki 5", options=["Alle"] + hierarki_5_options) if hierarki_4_filter != "Alle" else "Alle"
 
                 art_options = sorted(data["Art"].dropna().unique().tolist())
@@ -75,7 +80,7 @@ def get_vognpark_overview():
                     filtered_data["Mærke"].str.contains(search_query, case=False, na=False)
                 ]
             if hierarki_1_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_1"] == hierarki_1_filter]
+                filtered_data = filtered_data[filtered_data["Level_1"] == selected_level_1_raw]
             if hierarki_2_filter != "Alle":
                 filtered_data = filtered_data[filtered_data["Level_2"] == hierarki_2_filter]
             if hierarki_3_filter != "Alle":
