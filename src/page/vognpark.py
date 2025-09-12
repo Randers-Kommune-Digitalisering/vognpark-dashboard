@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
+import io
 from utils.database_connection import get_vognpark_db
 from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map
 
@@ -130,6 +131,39 @@ def get_vognpark_overview():
             if filtered_data.empty:
                 st.warning("Ingen køretøjer matcher dine filtre.")
                 st.stop()
+
+            filter_navn = ""
+            if hierarki_1_filter != "Alle":
+                filter_navn += f"_{hierarki_1_filter.lower().replace(' ', '_')}"
+            if enhed_filter != "Alle":
+                filter_navn += f"_{enhed_filter.lower().replace(' ', '_')}"
+
+            filnavn = f"vognpark{filter_navn}_eksport.xlsx"
+
+            export_df = filtered_data.copy()
+            export_df = export_df[[
+                "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
+                "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger",
+            ]]
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                export_df.to_excel(writer, index=False, sheet_name='Vognpark')
+                worksheet = writer.sheets['Vognpark']
+                for i, col in enumerate(export_df.columns):
+                    max_len = max(
+                        export_df[col].astype(str).map(len).max(),
+                        len(col)
+                    ) + 2
+                    worksheet.set_column(i, i, max_len)
+            output.seek(0)
+            st.download_button(
+                label="Eksporter viste køretøjer til Excel",
+                data=output,
+                file_name=filnavn,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
+                help="Download de filtrerede køretøjer som Excel-fil"
+            )
 
             for i, row in filtered_data.iterrows():
                 regnr = row['Reg. nr.'] or 'Ikke angivet'
