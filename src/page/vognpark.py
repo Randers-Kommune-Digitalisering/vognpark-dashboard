@@ -51,6 +51,10 @@ def get_vognpark_overview():
 
                 hierarki_1_options_raw = sorted(data["Level_1"].dropna().unique().tolist())
                 hierarki_1_options = [level_1_display_map.get(x, x) for x in hierarki_1_options_raw]
+
+                if "Ukendt tilhørsforhold" in hierarki_1_options:
+                    hierarki_1_options = [opt for opt in hierarki_1_options if opt != "Ukendt tilhørsforhold"] + ["Ukendt tilhørsforhold"]
+
                 hierarki_1_filter = st.selectbox("Forvaltning", options=["Alle"] + hierarki_1_options)
 
                 display_to_raw = {v: k for k, v in level_1_display_map.items()}
@@ -70,7 +74,13 @@ def get_vognpark_overview():
 
                 enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options)
 
-                art_options = sorted(data["Art"].dropna().unique().tolist())
+                art_options_raw = sorted(data["Art"].dropna().unique().tolist())
+                art_options = []
+                for art in art_options_raw:
+                    if art in ["Personbil", "Stor personbil", "Varebil"]:
+                        continue
+                    art_options.append(art)
+                art_options = ["Personbil/Varebil"] + art_options
                 art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art")
 
                 drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
@@ -98,7 +108,13 @@ def get_vognpark_overview():
                      (filtered_data["Level_2"] == enhed_filter) & filtered_data["Level_2"].notna() & (filtered_data["Level_2"] != ""))
                 ]
             if art_filter:
-                filtered_data = filtered_data[filtered_data["Art"].isin(art_filter)]
+                art_types = []
+                for af in art_filter:
+                    if af == "Personbil/Varebil":
+                        art_types.extend(["Personbil", "Stor personbil", "Varebil"])
+                    else:
+                        art_types.append(af)
+                filtered_data = filtered_data[filtered_data["Art"].isin(art_types)]
             if drivmiddel_filter:
                 filtered_data = filtered_data[filtered_data["Drivmiddel"].isin(drivmiddel_filter)]
             if traek_filter != "Alle":

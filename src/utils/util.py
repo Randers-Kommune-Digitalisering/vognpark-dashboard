@@ -30,9 +30,9 @@ def get_most_specific_level(row):
 
 level_1_display_map = {
     "Børn & Skole": "Børn & Skole",
-    "Miljø og Teknik": "Miljø & Teknik",
-    "Randers Kommune": "Biler, hvor tilhørsforhold er uvist",
+    "Miljø og Teknik": "Udvikling, Miljø & Teknik",
+    "Randers Kommune": "Ukendt tilhørsforhold",
     "Social og arbejdsmarked": "Social & Arbejdsmarked",
     "Stabene": "Stabene",
-    "Sundhed, kultur og omsorg": "Sundhed, Kultur & Omsorg"
+    "Sundhed, kultur og omsorg": "Sundhed, Kultur & Omsorg",
 }
