@@ -21,14 +21,16 @@ def get_vognpark_overview():
             results = []
             with st.spinner('Indlæser vognpark data...'):
                 query = """
-                SELECT "Level_1", "Level_2", "Level_3", "Level_4",
-                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
+                SELECT "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
+                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger",
+                       "Anvendelse", "Stel nr. "
                 FROM vognpark_data
                 """
                 result = db_client.execute_sql(query)
                 columns = [
-                    "Level_1", "Level_2", "Level_3", "Level_4",
-                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger"
+                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
+                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger",
+                    "Anvendelse", "Stel nr. "
                 ]
                 if result is not None:
                     results.append(pd.DataFrame(result, columns=columns))
@@ -142,9 +144,14 @@ def get_vognpark_overview():
 
             export_df = filtered_data.copy()
             export_df = export_df[[
-                "Level_1", "Level_2", "Level_3", "Level_4", "Level_5",
+                "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
                 "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model", "Primær bruger",
+                "Anvendelse", "Stel nr. "
             ]]
+            export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
+            export_df = export_df.rename(columns={"Primær bruger": "Ansvarlig"})
+            export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
+            export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 export_df.to_excel(writer, index=False, sheet_name='Vognpark')
