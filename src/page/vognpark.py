@@ -213,6 +213,12 @@ def get_vognpark_overview():
                         unsafe_allow_html=True
                     )
 
+            st.toast(
+                "**Kilde:** Forsikringskontorets database, som løbende opdateres ud fra Motorstyrelsens register. Senest opdateret: :blue-background[Mandag kl. 00:00 (ugentlig opdatering)]",
+                icon="ℹ️",
+                duration="short",
+            )
+
     except Exception as e:
         st.error(f'An error occurred:: {e}')
     finally:
