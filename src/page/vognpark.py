@@ -161,34 +161,34 @@ def get_vognpark_overview():
 
             filnavn = f"vognpark{filter_navn}_data.xlsx"
 
-            export_df = filtered_data.copy()
-            export_df = export_df[export_columns]
-
-            if "Level_1" in export_df.columns:
-                export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
-                export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
-            if "Træk" in export_df.columns:
-                export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                export_df.to_excel(writer, index=False, sheet_name='Vognpark')
-                worksheet = writer.sheets['Vognpark']
-                for i, col in enumerate(export_df.columns):
-                    max_len = max(
-                        export_df[col].astype(str).map(len).max(),
-                        len(col)
-                    ) + 2
-                    worksheet.set_column(i, i, max_len)
-            output.seek(0)
-            st.download_button(
-                label="Eksporter viste køretøjer til Excel",
-                data=output,
-                file_name=filnavn,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                help="Download de filtrerede køretøjer som Excel-fil",
-                icon=":material/addchart:"
-            )
+            with st.sidebar:
+                export_df = filtered_data.copy()
+                export_df = export_df[export_columns]
+                if "Level_1" in export_df.columns:
+                    export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
+                    export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
+                if "Træk" in export_df.columns:
+                    export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    export_df.to_excel(writer, index=False, sheet_name='Vognpark')
+                    worksheet = writer.sheets['Vognpark']
+                    for i, col in enumerate(export_df.columns):
+                        max_len = max(
+                            export_df[col].astype(str).map(len).max(),
+                            len(col)
+                        ) + 2
+                        worksheet.set_column(i, i, max_len)
+                output.seek(0)
+                st.download_button(
+                    label="Eksporter viste køretøjer til Excel",
+                    data=output,
+                    file_name=filnavn,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="primary",
+                    help="Download de filtrerede køretøjer som Excel-fil",
+                    icon=":material/addchart:"
+                )
 
             for i, row in filtered_data.iterrows():
                 regnr = row['Reg. nr.'] or 'Ikke angivet'
