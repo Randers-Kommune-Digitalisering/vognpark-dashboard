@@ -36,3 +36,21 @@ level_1_display_map = {
     "Stabene": "Stabene",
     "Sundhed, kultur og omsorg": "Sundhed, Kultur & Omsorg",
 }
+
+export_columns_display_map = {
+    "Level_1": "Forvaltning",
+    "Level_2": "Level_2",
+    "Level_3": "Level_3",
+    "Level_4": "Level_4",
+    "Level_5": "Level_5",
+    "Level_6": "Level_6",
+    "Art": "Art",
+    "Træk": "Træk",
+    "Drivmiddel": "Drivmiddel",
+    "Reg. nr.": "Reg. nr.",
+    "Mærke": "Mærke",
+    "Model": "Model",
+    "Anvendelse": "Anvendelse",
+    "Stel nr. ": "Stel nr. "
+}
+
