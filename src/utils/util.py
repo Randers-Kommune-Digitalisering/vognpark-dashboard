@@ -53,4 +53,3 @@ export_columns_display_map = {
     "Anvendelse": "Anvendelse",
     "Stel nr. ": "Stel nr. "
 }
-
