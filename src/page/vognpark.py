@@ -3,7 +3,7 @@ import streamlit_antd_components as sac
 import pandas as pd
 import io
 from utils.database_connection import get_vognpark_db
-from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map
+from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map, export_columns_display_map
 
 db_client = get_vognpark_db()
 
@@ -59,12 +59,12 @@ def get_vognpark_overview():
                 if "Ukendt tilhørsforhold" in hierarki_1_options:
                     hierarki_1_options = [opt for opt in hierarki_1_options if opt != "Ukendt tilhørsforhold"] + ["Ukendt tilhørsforhold"]
 
-                hierarki_1_filter = st.selectbox("Forvaltning", options=["Alle"] + hierarki_1_options)
+                hierarki_1_filter = st.multiselect("Forvaltning", options=hierarki_1_options, default=[], placeholder="Vælg forvaltning", help="Vælg en eller flere forvaltninger")
 
                 display_to_raw = {v: k for k, v in level_1_display_map.items()}
-                selected_level_1_raw = display_to_raw.get(hierarki_1_filter, hierarki_1_filter)
+                selected_level_1_raw = [display_to_raw.get(val, val) for val in hierarki_1_filter]
 
-                enhed_data = data if hierarki_1_filter == "Alle" else data[data["Level_1"] == selected_level_1_raw]
+                enhed_data = data if not hierarki_1_filter else data[data["Level_1"].isin(selected_level_1_raw)]
 
                 enhed_options = []
                 for _, row in enhed_data.iterrows():
@@ -76,7 +76,7 @@ def get_vognpark_overview():
                         enhed_options.append(row["Level_2"])
                 enhed_options = sorted(set(enhed_options))
 
-                enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options)
+                enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options, help="Vælg enhed")
 
                 art_options_raw = sorted(data["Art"].dropna().unique().tolist())
                 art_options = []
@@ -85,14 +85,32 @@ def get_vognpark_overview():
                         continue
                     art_options.append(art)
                 art_options = ["Personbil/Varebil"] + art_options
-                art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art")
+                art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art", help="Vælg en eller flere køretøjstyper")
 
                 drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
-                drivmiddel_filter = st.multiselect("Drivmiddel", options=drivmiddel_options, default=[], placeholder="Vælg drivmiddel")
+                drivmiddel_filter = st.multiselect("Drivmiddel", options=drivmiddel_options, default=[], placeholder="Vælg drivmiddel", help="Vælg en eller flere drivmidler")
 
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
                 traek_options_display = ["Alle"] + ["Ja" if x is True else "Nej" if x is False else str(x) for x in traek_options]
-                traek_filter = st.selectbox("Træk", options=traek_options_display)
+                traek_filter = st.selectbox("Træk", options=traek_options_display, help="Vælg om køretøjet har træk")
+
+                export_columns_default = [
+                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
+                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model",
+                    "Anvendelse", "Stel nr. "
+                ]
+
+                export_columns_display = [export_columns_display_map[col] for col in export_columns_default]
+
+                selected_export_columns_display = st.multiselect(
+                    "Vælg kolonner til eksport",
+                    options=export_columns_display,
+                    default=export_columns_display,
+                    help="Vælg hvilke kolonner der skal med i Excel-filen"
+                )
+
+                display_to_raw = {v: k for k, v in export_columns_display_map.items()}
+                export_columns = [display_to_raw[col] for col in selected_export_columns_display]
 
             filtered_data = data.copy()
             if search_query.strip():
@@ -100,8 +118,8 @@ def get_vognpark_overview():
                     filtered_data["Reg. nr."].str.contains(search_query, case=False, na=False) |
                     filtered_data["Mærke"].str.contains(search_query, case=False, na=False)
                 ]
-            if hierarki_1_filter != "Alle":
-                filtered_data = filtered_data[filtered_data["Level_1"] == selected_level_1_raw]
+            if hierarki_1_filter:
+                filtered_data = filtered_data[filtered_data["Level_1"].isin(selected_level_1_raw)]
             if enhed_filter != "Alle":
                 filtered_data = filtered_data[
                     ((filtered_data["Level_4"] == enhed_filter) & filtered_data["Level_4"].notna() & (filtered_data["Level_4"] != "")) |
@@ -136,22 +154,21 @@ def get_vognpark_overview():
                 st.stop()
 
             filter_navn = ""
-            if hierarki_1_filter != "Alle":
-                filter_navn += f"_{hierarki_1_filter.lower().replace(' ', '_')}"
+            if hierarki_1_filter:
+                filter_navn += "_" + "_".join([f"{val.lower().replace(' ', '_')}" for val in hierarki_1_filter])
             if enhed_filter != "Alle":
                 filter_navn += f"_{enhed_filter.lower().replace(' ', '_')}"
 
-            filnavn = f"vognpark{filter_navn}_eksport.xlsx"
+            filnavn = f"vognpark{filter_navn}_data.xlsx"
 
             export_df = filtered_data.copy()
-            export_df = export_df[[
-                "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
-                "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model",
-                "Anvendelse", "Stel nr. "
-            ]]
-            export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
-            export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
-            export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
+            export_df = export_df[export_columns]
+
+            if "Level_1" in export_df.columns:
+                export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
+                export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
+            if "Træk" in export_df.columns:
+                export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 export_df.to_excel(writer, index=False, sheet_name='Vognpark')
@@ -169,7 +186,8 @@ def get_vognpark_overview():
                 file_name=filnavn,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary",
-                help="Download de filtrerede køretøjer som Excel-fil"
+                help="Download de filtrerede køretøjer som Excel-fil",
+                icon=":material/addchart:"
             )
 
             for i, row in filtered_data.iterrows():
@@ -220,6 +238,6 @@ def get_vognpark_overview():
             )
 
     except Exception as e:
-        st.error(f'An error occurred:: {e}')
+        st.error(f'An error occurred: {e}')
     finally:
         db_client.close_connection()
