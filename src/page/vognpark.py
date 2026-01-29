@@ -1,9 +1,16 @@
+import os
 import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 import io
 from utils.database_connection import get_vognpark_db
-from utils.util import get_drivmiddel_icon, get_traek_icon, get_most_specific_level, level_1_display_map, export_columns_display_map
+from utils.util import (
+    get_drivmiddel_icon,
+    get_traek_icon,
+    get_most_specific_level,
+    level_1_display_map,
+    export_columns_display_map,
+)
 
 db_client = get_vognpark_db()
 
@@ -12,26 +19,64 @@ def get_vognpark_overview():
     col_1 = st.columns([1])[0]
 
     with col_1:
-        content_tabs = sac.tabs([
-            sac.TabsItem('Vognparkoversigt', tag='Køretøjer i Randers Kommune', icon='bi bi-ev-front'),
-        ], color='dark', size='md', position='top', align='start', use_container_width=True)
+        content_tabs = sac.tabs(
+            [
+                sac.TabsItem(
+                    "Vognparkoversigt",
+                    tag="Køretøjer i Randers Kommune",
+                    icon="bi bi-ev-front",
+                ),
+            ],
+            color="dark",
+            size="md",
+            position="top",
+            align="start",
+            use_container_width=True,
+        )
 
     try:
-        if 'vognpark_data' not in st.session_state:
+        if "vognpark_data" not in st.session_state:
             results = []
-            with st.spinner('Indlæser vognpark data...'):
+            with st.spinner("Indlæser vognpark data..."):
+                # Alias'er NY struktur til GAMMEL struktur + forskyder levels:
                 query = """
-                SELECT "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
-                       "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model",
-                       "Anvendelse", "Stel nr. "
+                SELECT
+                    "Level2"  AS "Level_1",
+                    "Level3"  AS "Level_2",
+                    "Level4"  AS "Level_3",
+                    "Level5"  AS "Level_4",
+                    "Level6"  AS "Level_5",
+                    NULL      AS "Level_6",
+                    "Art"     AS "Art",
+                    "Træk"    AS "Træk",
+                    "Drivmiddel" AS "Drivmiddel",
+                    "Reg.nr." AS "Reg. nr.",
+                    "Mærke"   AS "Mærke",
+                    "Model"   AS "Model",
+                    "Anvendelse" AS "Anvendelse",
+                    "Stelnr." AS "Stel nr. "
                 FROM vognpark_data
                 """
+
                 result = db_client.execute_sql(query)
+
                 columns = [
-                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
-                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model",
-                    "Anvendelse", "Stel nr. "
+                    "Level_1",
+                    "Level_2",
+                    "Level_3",
+                    "Level_4",
+                    "Level_5",
+                    "Level_6",
+                    "Art",
+                    "Træk",
+                    "Drivmiddel",
+                    "Reg. nr.",
+                    "Mærke",
+                    "Model",
+                    "Anvendelse",
+                    "Stel nr. ",
                 ]
+
                 if result is not None:
                     results.append(pd.DataFrame(result, columns=columns))
                 else:
@@ -46,25 +91,47 @@ def get_vognpark_overview():
 
         data = st.session_state.vognpark_data
 
-        if content_tabs == 'Vognparkoversigt':
-
+        if content_tabs == "Vognparkoversigt":
             with st.sidebar:
                 st.markdown("### 🔎 Filtrer køretøjer")
 
-                search_query = st.text_input("Søg køretøj", value="", placeholder="Søg fx Reg.Nr, Mærke", label_visibility="collapsed")
+                search_query = st.text_input(
+                    "Søg køretøj",
+                    value="",
+                    placeholder="Søg fx Reg.Nr, Mærke",
+                    label_visibility="collapsed",
+                )
 
                 hierarki_1_options_raw = sorted(data["Level_1"].dropna().unique().tolist())
-                hierarki_1_options = [level_1_display_map.get(x, x) for x in hierarki_1_options_raw]
+                hierarki_1_options = [
+                    level_1_display_map.get(x, x) for x in hierarki_1_options_raw
+                ]
 
                 if "Ukendt tilhørsforhold" in hierarki_1_options:
-                    hierarki_1_options = [opt for opt in hierarki_1_options if opt != "Ukendt tilhørsforhold"] + ["Ukendt tilhørsforhold"]
+                    hierarki_1_options = [
+                        opt
+                        for opt in hierarki_1_options
+                        if opt != "Ukendt tilhørsforhold"
+                    ] + ["Ukendt tilhørsforhold"]
 
-                hierarki_1_filter = st.multiselect("Forvaltning", options=hierarki_1_options, default=[], placeholder="Vælg forvaltning", help="Vælg en eller flere forvaltninger")
+                hierarki_1_filter = st.multiselect(
+                    "Forvaltning",
+                    options=hierarki_1_options,
+                    default=[],
+                    placeholder="Vælg forvaltning",
+                    help="Vælg en eller flere forvaltninger",
+                )
 
                 display_to_raw = {v: k for k, v in level_1_display_map.items()}
-                selected_level_1_raw = [display_to_raw.get(val, val) for val in hierarki_1_filter]
+                selected_level_1_raw = [
+                    display_to_raw.get(val, val) for val in hierarki_1_filter
+                ]
 
-                enhed_data = data if not hierarki_1_filter else data[data["Level_1"].isin(selected_level_1_raw)]
+                enhed_data = (
+                    data
+                    if not hierarki_1_filter
+                    else data[data["Level_1"].isin(selected_level_1_raw)]
+                )
 
                 enhed_options = []
                 for _, row in enhed_data.iterrows():
@@ -76,7 +143,9 @@ def get_vognpark_overview():
                         enhed_options.append(row["Level_2"])
                 enhed_options = sorted(set(enhed_options))
 
-                enhed_filter = st.selectbox("Enhed", options=["Alle"] + enhed_options, help="Vælg enhed")
+                enhed_filter = st.selectbox(
+                    "Enhed", options=["Alle"] + enhed_options, help="Vælg enhed"
+                )
 
                 art_options_raw = sorted(data["Art"].dropna().unique().tolist())
                 art_options = []
@@ -85,49 +154,105 @@ def get_vognpark_overview():
                         continue
                     art_options.append(art)
                 art_options = ["Personbil/Varebil"] + art_options
-                art_filter = st.multiselect("Art", options=art_options, default=[], placeholder="Vælg art", help="Vælg en eller flere køretøjstyper")
+                art_filter = st.multiselect(
+                    "Art",
+                    options=art_options,
+                    default=[],
+                    placeholder="Vælg art",
+                    help="Vælg en eller flere køretøjstyper",
+                )
 
                 drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
-                drivmiddel_filter = st.multiselect("Drivmiddel", options=drivmiddel_options, default=[], placeholder="Vælg drivmiddel", help="Vælg en eller flere drivmidler")
+                drivmiddel_filter = st.multiselect(
+                    "Drivmiddel",
+                    options=drivmiddel_options,
+                    default=[],
+                    placeholder="Vælg drivmiddel",
+                    help="Vælg en eller flere drivmidler",
+                )
 
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
-                traek_options_display = ["Alle"] + ["Ja" if x is True else "Nej" if x is False else str(x) for x in traek_options]
-                traek_filter = st.selectbox("Træk", options=traek_options_display, help="Vælg om køretøjet har træk")
+                traek_options_display = ["Alle"] + [
+                    "Ja"
+                    if x is True
+                    else "Nej"
+                    if x is False
+                    else str(x)
+                    for x in traek_options
+                ]
+                traek_filter = st.selectbox(
+                    "Træk",
+                    options=traek_options_display,
+                    help="Vælg om køretøjet har træk",
+                )
 
                 export_columns_default = [
-                    "Level_1", "Level_2", "Level_3", "Level_4", "Level_5", "Level_6",
-                    "Art", "Træk", "Drivmiddel", "Reg. nr.", "Mærke", "Model",
-                    "Anvendelse", "Stel nr. "
+                    "Level_1",
+                    "Level_2",
+                    "Level_3",
+                    "Level_4",
+                    "Level_5",
+                    "Level_6",
+                    "Art",
+                    "Træk",
+                    "Drivmiddel",
+                    "Reg. nr.",
+                    "Mærke",
+                    "Model",
+                    "Anvendelse",
+                    "Stel nr. ",
                 ]
 
-                export_columns_display = [export_columns_display_map[col] for col in export_columns_default]
+                export_columns_display = [
+                    export_columns_display_map[col] for col in export_columns_default
+                ]
 
                 selected_export_columns_display = st.multiselect(
                     "Vælg kolonner til eksport",
                     options=export_columns_display,
                     default=export_columns_display,
-                    help="Vælg hvilke kolonner der skal med i Excel-filen"
+                    help="Vælg hvilke kolonner der skal med i Excel-filen",
                 )
 
                 display_to_raw = {v: k for k, v in export_columns_display_map.items()}
-                export_columns = [display_to_raw[col] for col in selected_export_columns_display]
+                export_columns = [
+                    display_to_raw[col] for col in selected_export_columns_display
+                ]
 
             filtered_data = data.copy()
             if search_query.strip():
                 filtered_data = filtered_data[
-                    filtered_data["Reg. nr."].str.contains(search_query, case=False, na=False) |
-                    filtered_data["Mærke"].str.contains(search_query, case=False, na=False)
+                    filtered_data["Reg. nr."].str.contains(
+                        search_query, case=False, na=False
+                    )
+                    | filtered_data["Mærke"].str.contains(
+                        search_query, case=False, na=False
+                    )
                 ]
             if hierarki_1_filter:
-                filtered_data = filtered_data[filtered_data["Level_1"].isin(selected_level_1_raw)]
+                filtered_data = filtered_data[
+                    filtered_data["Level_1"].isin(selected_level_1_raw)
+                ]
             if enhed_filter != "Alle":
                 filtered_data = filtered_data[
-                    ((filtered_data["Level_4"] == enhed_filter) & filtered_data["Level_4"].notna() & (filtered_data["Level_4"] != "")) |
-                    ((filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == "")) &
-                     (filtered_data["Level_3"] == enhed_filter) & filtered_data["Level_3"].notna() & (filtered_data["Level_3"] != "")) |
-                    ((filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == "")) &
-                     (filtered_data["Level_3"].isna() | (filtered_data["Level_3"] == "")) &
-                     (filtered_data["Level_2"] == enhed_filter) & filtered_data["Level_2"].notna() & (filtered_data["Level_2"] != ""))
+                    (
+                        (filtered_data["Level_4"] == enhed_filter)
+                        & filtered_data["Level_4"].notna()
+                        & (filtered_data["Level_4"] != "")
+                    )
+                    | (
+                        (filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == ""))
+                        & (filtered_data["Level_3"] == enhed_filter)
+                        & filtered_data["Level_3"].notna()
+                        & (filtered_data["Level_3"] != "")
+                    )
+                    | (
+                        (filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == ""))
+                        & (filtered_data["Level_3"].isna() | (filtered_data["Level_3"] == ""))
+                        & (filtered_data["Level_2"] == enhed_filter)
+                        & filtered_data["Level_2"].notna()
+                        & (filtered_data["Level_2"] != "")
+                    )
                 ]
             if art_filter:
                 art_types = []
@@ -138,15 +263,24 @@ def get_vognpark_overview():
                         art_types.append(af)
                 filtered_data = filtered_data[filtered_data["Art"].isin(art_types)]
             if drivmiddel_filter:
-                filtered_data = filtered_data[filtered_data["Drivmiddel"].isin(drivmiddel_filter)]
+                filtered_data = filtered_data[
+                    filtered_data["Drivmiddel"].isin(drivmiddel_filter)
+                ]
             if traek_filter != "Alle":
                 filtered_data = filtered_data[
-                    filtered_data["Træk"].apply(lambda x: "Ja" if x is True else "Nej" if x is False else str(x)) == traek_filter
+                    filtered_data["Træk"].apply(
+                        lambda x: "Ja"
+                        if x is True
+                        else "Nej"
+                        if x is False
+                        else str(x)
+                    )
+                    == traek_filter
                 ]
 
             st.markdown(
                 f"<span style='background:#e0e0e0; border-radius:8px; padding:4px 12px; font-size:1rem; margin-left:8px;'>🚗 :blue[{len(filtered_data)}] køretøjer fundet</span>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             if filtered_data.empty:
@@ -155,7 +289,9 @@ def get_vognpark_overview():
 
             filter_navn = ""
             if hierarki_1_filter:
-                filter_navn += "_" + "_".join([f"{val.lower().replace(' ', '_')}" for val in hierarki_1_filter])
+                filter_navn += "_" + "_".join(
+                    [f"{val.lower().replace(' ', '_')}" for val in hierarki_1_filter]
+                )
             if enhed_filter != "Alle":
                 filter_navn += f"_{enhed_filter.lower().replace(' ', '_')}"
 
@@ -166,19 +302,24 @@ def get_vognpark_overview():
                 export_df = export_df[export_columns]
                 if "Level_1" in export_df.columns:
                     export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
-                    export_df["Forvaltning"] = export_df["Forvaltning"].map(lambda x: level_1_display_map.get(x, x))
+                    export_df["Forvaltning"] = export_df["Forvaltning"].map(
+                        lambda x: level_1_display_map.get(x, x)
+                    )
                 if "Træk" in export_df.columns:
-                    export_df["Træk"] = export_df["Træk"].map(lambda x: "Ja" if x is True else "Nej" if x is False else x)
+                    export_df["Træk"] = export_df["Træk"].map(
+                        lambda x: "Ja" if x is True else "Nej" if x is False else x
+                    )
+
                 output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    export_df.to_excel(writer, index=False, sheet_name='Vognpark')
-                    worksheet = writer.sheets['Vognpark']
+                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                    export_df.to_excel(writer, index=False, sheet_name="Vognpark")
+                    worksheet = writer.sheets["Vognpark"]
                     for i, col in enumerate(export_df.columns):
-                        max_len = max(
-                            export_df[col].astype(str).map(len).max(),
-                            len(col)
-                        ) + 2
+                        max_len = (
+                            max(export_df[col].astype(str).map(len).max(), len(col)) + 2
+                        )
                         worksheet.set_column(i, i, max_len)
+
                 output.seek(0)
                 st.download_button(
                     label="Eksporter viste køretøjer til Excel",
@@ -187,13 +328,21 @@ def get_vognpark_overview():
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                     help="Download de filtrerede køretøjer som Excel-fil",
-                    icon=":material/addchart:"
+                    icon=":material/addchart:",
                 )
 
-            for i, row in filtered_data.iterrows():
-                regnr = row['Reg. nr.'] or 'Ikke angivet'
-                maerke = row['Mærke'] if pd.notna(row['Mærke']) and row['Mærke'] != "" else None
-                model = row['Model'] if pd.notna(row['Model']) and row['Model'] != "" else None
+            for _, row in filtered_data.iterrows():
+                regnr = row["Reg. nr."] or "Ikke angivet"
+                maerke = (
+                    row["Mærke"]
+                    if pd.notna(row["Mærke"]) and row["Mærke"] != ""
+                    else None
+                )
+                model = (
+                    row["Model"]
+                    if pd.notna(row["Model"]) and row["Model"] != ""
+                    else None
+                )
                 most_specific_level = get_most_specific_level(row)
 
                 regnr = regnr.strip()
@@ -228,16 +377,43 @@ def get_vognpark_overview():
                             </div>
                         </div>
                         """,
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
 
+            # Display seneste fil upload tid til SFTP'en
+            last_updated_text = "Ukendt"
+            last_file_text = ""
+
+            try:
+                meta = db_client.execute_sql(
+                    """
+                    SELECT file_path, modified_at_utc
+                    FROM vognpark_file_audit
+                    LIMIT 1
+                    """
+                )
+
+                if meta and meta[0]:
+                    file_path, modified_at_utc = meta[0][0], meta[0][1]
+
+                    if file_path:
+                        last_file_text = f" ({os.path.basename(str(file_path))})"
+
+                    if modified_at_utc:
+                        dt_utc = pd.to_datetime(modified_at_utc, utc=True)
+                        dt_dk = dt_utc.tz_convert("Europe/Copenhagen")
+                        last_updated_text = dt_dk.strftime("%d-%m-%Y %H:%M")
+            except Exception:
+                pass
+
             st.toast(
-                "**Kilde:** Forsikringskontorets database, som løbende opdateres ud fra Motorstyrelsens register. Senest opdateret: :blue-background[Mandag kl. 00:00 (ugentlig opdatering)]",
+                f"**Kilde:** Forsikringskontorets database, som løbende opdateres ud fra Motorstyrelsens register. "
+                f"Senest opdateret: :blue-background[{last_updated_text}]{last_file_text}",
                 icon="ℹ️",
                 duration="short",
             )
 
     except Exception as e:
-        st.error(f'An error occurred: {e}')
+        st.error(f"An error occurred: {e}")
     finally:
         db_client.close_connection()
