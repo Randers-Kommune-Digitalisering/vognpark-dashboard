@@ -391,14 +391,14 @@ def get_vognpark_overview():
             try:
                 meta = db_client.execute_sql(
                     """
-                    SELECT file_path, modified_at_utc
+                    SELECT modified_at_utc
                     FROM vognpark_file_audit
                     LIMIT 1
                     """
                 )
 
                 if meta and meta[0]:
-                    file_path, modified_at_utc = meta[0][0], meta[0][1]
+                    (modified_at_utc,) = meta[0]
 
                     if modified_at_utc:
                         dt_utc = pd.to_datetime(modified_at_utc, utc=True)
