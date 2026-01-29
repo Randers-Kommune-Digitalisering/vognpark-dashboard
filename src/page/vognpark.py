@@ -102,7 +102,9 @@ def get_vognpark_overview():
                     label_visibility="collapsed",
                 )
 
-                hierarki_1_options_raw = sorted(data["Level_1"].dropna().unique().tolist())
+                hierarki_1_options_raw = sorted(
+                    data["Level_1"].dropna().unique().tolist()
+                )
                 hierarki_1_options = [
                     level_1_display_map.get(x, x) for x in hierarki_1_options_raw
                 ]
@@ -162,7 +164,9 @@ def get_vognpark_overview():
                     help="Vælg en eller flere køretøjstyper",
                 )
 
-                drivmiddel_options = sorted(data["Drivmiddel"].dropna().unique().tolist())
+                drivmiddel_options = sorted(
+                    data["Drivmiddel"].dropna().unique().tolist()
+                )
                 drivmiddel_filter = st.multiselect(
                     "Drivmiddel",
                     options=drivmiddel_options,
@@ -173,11 +177,7 @@ def get_vognpark_overview():
 
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
                 traek_options_display = ["Alle"] + [
-                    "Ja"
-                    if x is True
-                    else "Nej"
-                    if x is False
-                    else str(x)
+                    "Ja" if x is True else "Nej" if x is False else str(x)
                     for x in traek_options
                 ]
                 traek_filter = st.selectbox(
@@ -241,14 +241,23 @@ def get_vognpark_overview():
                         & (filtered_data["Level_4"] != "")
                     )
                     | (
-                        (filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == ""))
+                        (
+                            filtered_data["Level_4"].isna()
+                            | (filtered_data["Level_4"] == "")
+                        )
                         & (filtered_data["Level_3"] == enhed_filter)
                         & filtered_data["Level_3"].notna()
                         & (filtered_data["Level_3"] != "")
                     )
                     | (
-                        (filtered_data["Level_4"].isna() | (filtered_data["Level_4"] == ""))
-                        & (filtered_data["Level_3"].isna() | (filtered_data["Level_3"] == ""))
+                        (
+                            filtered_data["Level_4"].isna()
+                            | (filtered_data["Level_4"] == "")
+                        )
+                        & (
+                            filtered_data["Level_3"].isna()
+                            | (filtered_data["Level_3"] == "")
+                        )
                         & (filtered_data["Level_2"] == enhed_filter)
                         & filtered_data["Level_2"].notna()
                         & (filtered_data["Level_2"] != "")
@@ -269,11 +278,7 @@ def get_vognpark_overview():
             if traek_filter != "Alle":
                 filtered_data = filtered_data[
                     filtered_data["Træk"].apply(
-                        lambda x: "Ja"
-                        if x is True
-                        else "Nej"
-                        if x is False
-                        else str(x)
+                        lambda x: "Ja" if x is True else "Nej" if x is False else str(x)
                     )
                     == traek_filter
                 ]
