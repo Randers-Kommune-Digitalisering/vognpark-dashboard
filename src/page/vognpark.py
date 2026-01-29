@@ -387,7 +387,6 @@ def get_vognpark_overview():
 
             # Display seneste fil upload tid til SFTP'en
             last_updated_text = "Ukendt"
-            last_file_text = ""
 
             try:
                 meta = db_client.execute_sql(
@@ -401,9 +400,6 @@ def get_vognpark_overview():
                 if meta and meta[0]:
                     file_path, modified_at_utc = meta[0][0], meta[0][1]
 
-                    if file_path:
-                        last_file_text = f" ({os.path.basename(str(file_path))})"
-
                     if modified_at_utc:
                         dt_utc = pd.to_datetime(modified_at_utc, utc=True)
                         dt_dk = dt_utc.tz_convert("Europe/Copenhagen")
@@ -413,7 +409,7 @@ def get_vognpark_overview():
 
             st.toast(
                 f"**Kilde:** Forsikringskontorets database, som løbende opdateres ud fra Motorstyrelsens register. "
-                f"Senest opdateret: :blue-background[{last_updated_text}]{last_file_text}",
+                f"Senest opdateret: :blue-background[{last_updated_text}]",
                 icon="ℹ️",
                 duration="short",
             )
