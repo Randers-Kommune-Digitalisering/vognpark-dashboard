@@ -53,7 +53,8 @@ def get_vognpark_overview():
                     "Mærke"   AS "Mærke",
                     "Model"   AS "Model",
                     "Anvendelse" AS "Anvendelse",
-                    "Stelnr." AS "Stel nr. "
+                    "Stelnr." AS "Stel nr. ",
+                    "Afg.dato" AS "Afg.dato"
                 FROM vognpark_data
                 """
 
@@ -74,6 +75,7 @@ def get_vognpark_overview():
                     "Model",
                     "Anvendelse",
                     "Stel nr. ",
+                    "Afg.dato",
                 ]
 
                 if result is not None:
@@ -99,6 +101,12 @@ def get_vognpark_overview():
                     value="",
                     placeholder="Søg fx Reg.Nr, Mærke",
                     label_visibility="collapsed",
+                )
+
+                inkluder_udgaaede = st.checkbox(
+                    "Inkluder udgåede køretøjer",
+                    value=False,
+                    help="Vis også udgåede køretøjer",
                 )
 
                 hierarki_1_options_raw = sorted(
@@ -219,6 +227,11 @@ def get_vognpark_overview():
                 ]
 
             filtered_data = data.copy()
+            if not inkluder_udgaaede:
+                filtered_data = filtered_data[
+                    filtered_data["Afg.dato"].isna()
+                    | (filtered_data["Afg.dato"] == "")
+                ]
             if search_query.strip():
                 filtered_data = filtered_data[
                     filtered_data["Reg. nr."].str.contains(
@@ -336,6 +349,16 @@ def get_vognpark_overview():
                 )
 
             for _, row in filtered_data.iterrows():
+
+                is_udgaaet = pd.notna(row["Afg.dato"]) and row["Afg.dato"] != ""
+                status = "Udgået" if is_udgaaet else "Aktiv"
+
+                afg_dato = (
+                    pd.to_datetime(row["Afg.dato"]).strftime("%Y-%m-%d")
+                    if is_udgaaet
+                    else "-"
+                )
+
                 regnr = row["Reg. nr."] or "Ikke angivet"
                 maerke = (
                     row["Mærke"]
@@ -350,7 +373,7 @@ def get_vognpark_overview():
                 most_specific_level = get_most_specific_level(row)
 
                 regnr = regnr.strip()
-                title = f"**{regnr}**\n{maerke or ''} {model or ''}".strip()
+                title = f"**{regnr}** {'🔴' if is_udgaaet else ''}\n{maerke or ''} {model or ''}".strip()
 
                 with st.expander(title):
                     st.markdown(
@@ -369,7 +392,9 @@ def get_vognpark_overview():
                         ">
                             <div style="flex:1;">
                                 <p style="margin:0.2rem 0;"><strong>Reg. nr.:</strong> {regnr}</p>
+                                <p style="margin:0.2rem 0;"><strong>Status:</strong> {status}</p>
                                 <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Afg.dato:</strong> {afg_dato}</p>
                                 <p style="margin:0.2rem 0;"><strong>Forvaltning:</strong> {level_1_display_map.get(row['Level_1'], row['Level_1'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Enhed:</strong> {most_specific_level}</p>
                             </div>
