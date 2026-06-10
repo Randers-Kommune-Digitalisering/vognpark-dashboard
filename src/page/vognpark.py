@@ -4,7 +4,7 @@ import pandas as pd
 import io
 from utils.database_connection import get_vognpark_db
 from utils.util import (
-    get_drivmiddel_icon,
+    is_active_vehicle,
     get_traek_icon,
     get_most_specific_level,
     level_1_display_map,
@@ -48,7 +48,6 @@ def get_vognpark_overview():
                     NULL      AS "Level_6",
                     "Art"     AS "Art",
                     "Træk"    AS "Træk",
-                    "Drivmiddel" AS "Drivmiddel",
                     "Reg.nr." AS "Reg. nr.",
                     "Mærke"   AS "Mærke",
                     "Model"   AS "Model",
@@ -69,7 +68,6 @@ def get_vognpark_overview():
                     "Level_6",
                     "Art",
                     "Træk",
-                    "Drivmiddel",
                     "Reg. nr.",
                     "Mærke",
                     "Model",
@@ -171,17 +169,6 @@ def get_vognpark_overview():
                     help="Vælg en eller flere køretøjstyper",
                 )
 
-                drivmiddel_options = sorted(
-                    data["Drivmiddel"].dropna().unique().tolist()
-                )
-                drivmiddel_filter = st.multiselect(
-                    "Drivmiddel",
-                    options=drivmiddel_options,
-                    default=[],
-                    placeholder="Vælg drivmiddel",
-                    help="Vælg en eller flere drivmidler",
-                )
-
                 traek_options = sorted(data["Træk"].dropna().unique().tolist())
                 traek_options_display = ["Alle"] + [
                     "Ja" if x is True else "Nej" if x is False else str(x)
@@ -202,7 +189,6 @@ def get_vognpark_overview():
                     "Level_6",
                     "Art",
                     "Træk",
-                    "Drivmiddel",
                     "Reg. nr.",
                     "Mærke",
                     "Model",
@@ -229,8 +215,7 @@ def get_vognpark_overview():
             filtered_data = data.copy()
             if not inkluder_udgaaede:
                 filtered_data = filtered_data[
-                    filtered_data["Afg.dato"].isna()
-                    | (filtered_data["Afg.dato"] == "")
+                    filtered_data["Afg.dato"].apply(is_active_vehicle)
                 ]
             if search_query.strip():
                 filtered_data = filtered_data[
@@ -283,10 +268,6 @@ def get_vognpark_overview():
                     else:
                         art_types.append(af)
                 filtered_data = filtered_data[filtered_data["Art"].isin(art_types)]
-            if drivmiddel_filter:
-                filtered_data = filtered_data[
-                    filtered_data["Drivmiddel"].isin(drivmiddel_filter)
-                ]
             if traek_filter != "Alle":
                 filtered_data = filtered_data[
                     filtered_data["Træk"].apply(
@@ -350,7 +331,7 @@ def get_vognpark_overview():
 
             for _, row in filtered_data.iterrows():
 
-                is_udgaaet = pd.notna(row["Afg.dato"]) and row["Afg.dato"] != ""
+                is_udgaaet = not is_active_vehicle(row["Afg.dato"])
                 status = "Udgået" if is_udgaaet else "Aktiv"
 
                 afg_dato = (
@@ -401,7 +382,6 @@ def get_vognpark_overview():
                             <div style="flex:0.5; text-align:center;">
                                 <p style="margin:0.2rem 0;"><strong>Model:</strong> {model or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Art:</strong> {row['Art'] or 'Ikke oplyst'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Drivmiddel:</strong> {get_drivmiddel_icon(row['Drivmiddel'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Træk:</strong> {get_traek_icon(row['Træk'])}</p>
                             </div>
                         </div>
@@ -409,25 +389,23 @@ def get_vognpark_overview():
                         unsafe_allow_html=True,
                     )
 
-            # Display seneste fil upload tid til SFTP'en
             last_updated_text = "Ukendt"
 
             try:
                 meta = db_client.execute_sql(
                     """
-                    SELECT modified_at_utc
-                    FROM vognpark_file_audit
-                    LIMIT 1
+                    SELECT report_date
+                    FROM vognpark_run_audit
                     """
                 )
 
                 if meta and meta[0]:
-                    (modified_at_utc,) = meta[0]
+                    (report_date,) = meta[0]
 
-                    if modified_at_utc:
-                        dt_utc = pd.to_datetime(modified_at_utc, utc=True)
-                        dt_dk = dt_utc.tz_convert("Europe/Copenhagen")
-                        last_updated_text = dt_dk.strftime("%d-%m-%Y %H:%M")
+                    if report_date:
+                        dt = pd.to_datetime(report_date, errors="coerce")
+                        if pd.notna(dt):
+                            last_updated_text = dt.strftime("%d-%m-%Y")
             except Exception:
                 pass
 

@@ -53,3 +53,17 @@ export_columns_display_map = {
     "Anvendelse": "Anvendelse",
     "Stel nr. ": "Stel nr. "
 }
+
+
+ACTIVE_DEFAULT_DATE = pd.Timestamp("1900-01-01")
+
+
+def is_active_vehicle(afg_dato):
+    if pd.isna(afg_dato) or afg_dato == "":
+        return True
+
+    dt = pd.to_datetime(afg_dato, errors="coerce")
+    if pd.isna(dt):
+        return False
+
+    return dt.tz_localize(None).normalize() == ACTIVE_DEFAULT_DATE if getattr(dt, "tzinfo", None) else dt.normalize() == ACTIVE_DEFAULT_DATE
