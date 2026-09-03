@@ -2,9 +2,11 @@ import streamlit as st
 import streamlit_antd_components as sac
 import pandas as pd
 import io
+from urllib.parse import quote
 from utils.database_connection import get_vognpark_db
 from utils.util import (
     is_active_vehicle,
+    is_valid_regnr,
     get_traek_icon,
     get_most_specific_level,
     level_1_display_map,
@@ -53,7 +55,9 @@ def get_vognpark_overview():
                     "Model"   AS "Model",
                     "Anvendelse" AS "Anvendelse",
                     "Stelnr." AS "Stel nr. ",
-                    "Afg.dato" AS "Afg.dato"
+                    "Afg.dato" AS "Afg.dato",
+                    "Årgang",
+                    "Reg.dato"
                 FROM vognpark_data
                 """
 
@@ -74,6 +78,8 @@ def get_vognpark_overview():
                     "Anvendelse",
                     "Stel nr. ",
                     "Afg.dato",
+                    "Årgang",
+                    "Reg.dato"
                 ]
 
                 if result is not None:
@@ -187,13 +193,17 @@ def get_vognpark_overview():
                     "Level_4",
                     "Level_5",
                     "Level_6",
+                    "Reg. nr.",
+                    "Stel nr. ",
+                    "Årgang",
+                    "Reg.dato",
+                    "Afg.dato",
+                    "Status",
                     "Art",
                     "Træk",
-                    "Reg. nr.",
                     "Mærke",
                     "Model",
                     "Anvendelse",
-                    "Stel nr. ",
                 ]
 
                 export_columns_display = [
@@ -297,7 +307,21 @@ def get_vognpark_overview():
 
             with st.sidebar:
                 export_df = filtered_data.copy()
+                export_df["Status"] = export_df["Afg.dato"].apply(
+                    lambda afg_dato: (
+                        "Aktiv" if is_active_vehicle(afg_dato) else "Udgået"
+                    )
+                )
                 export_df = export_df[export_columns]
+                if "Årgang" in export_df.columns:
+                    export_df["Årgang"] = export_df["Årgang"].map(
+                        lambda aargang: (
+                            aargang
+                            if pd.notna(aargang)
+                            and aargang not in ("", 0, "0")
+                            else "Ikke oplyst"
+                        )
+                    )
                 if "Level_1" in export_df.columns:
                     export_df = export_df.rename(columns={"Level_1": "Forvaltning"})
                     export_df["Forvaltning"] = export_df["Forvaltning"].map(
@@ -335,9 +359,27 @@ def get_vognpark_overview():
                 status = "Udgået" if is_udgaaet else "Aktiv"
 
                 afg_dato = (
-                    pd.to_datetime(row["Afg.dato"]).strftime("%Y-%m-%d")
-                    if is_udgaaet
-                    else "-"
+                    pd.to_datetime(row["Afg.dato"], errors="coerce")
+                )
+                afg_dato = (
+                    f"{afg_dato.day:02d}-{afg_dato.month:02d}-{afg_dato.year:04d}"
+                    if pd.notna(afg_dato)
+                    else None
+                )
+
+                aargang = (
+                    row["Årgang"]
+                    if pd.notna(row["Årgang"])
+                    and row["Årgang"] not in ("", 0, "0")
+                    else None
+                )
+                reg_dato_value = pd.to_datetime(
+                    row["Reg.dato"], errors="coerce"
+                )
+                reg_dato = (
+                    f"{reg_dato_value.day:02d}-{reg_dato_value.month:02d}-{reg_dato_value.year:04d}"
+                    if pd.notna(reg_dato_value)
+                    else None
                 )
 
                 regnr = row["Reg. nr."] or "Ikke angivet"
@@ -355,6 +397,7 @@ def get_vognpark_overview():
 
                 regnr = regnr.strip()
                 title = f"**{regnr}** {'🔴' if is_udgaaet else ''}\n{maerke or ''} {model or ''}".strip()
+                tjekbil_url = f"https://www.tjekbil.dk/nummerplade/{quote(regnr, safe='')}/overblik"
 
                 with st.expander(title):
                     st.markdown(
@@ -373,6 +416,8 @@ def get_vognpark_overview():
                         ">
                             <div style="flex:1;">
                                 <p style="margin:0.2rem 0;"><strong>Reg. nr.:</strong> {regnr}</p>
+                                <p style="margin:0.2rem 0;"><strong>Årgang:</strong> {aargang or 'Ikke oplyst'}</p>
+                                <p style="margin:0.2rem 0;"><strong>Indregistrering:</strong> {reg_dato or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Status:</strong> {status}</p>
                                 <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Afg.dato:</strong> {afg_dato}</p>
@@ -388,6 +433,12 @@ def get_vognpark_overview():
                         """,
                         unsafe_allow_html=True,
                     )
+                    if is_valid_regnr(regnr):
+                        st.link_button(
+                            "🔗 Se køretøj på tjekbil.dk",
+                            tjekbil_url,
+                            help="Åbner tjekbil.dk i en ny fane",
+                        )
 
             last_updated_text = "Ukendt"
 

@@ -1,4 +1,14 @@
+import re
 import pandas as pd
+
+# Danish license plates: 2 letters + 2-5 digits (e.g., AB12345), optionally with a space
+REGNR_PATTERN = re.compile(r"^[A-ZÆØÅ]{2}\s?\d{2,5}$")
+
+
+def is_valid_regnr(regnr):
+    if not regnr or not isinstance(regnr, str):
+        return False
+    return bool(REGNR_PATTERN.match(regnr.strip().upper()))
 
 
 def get_traek_icon(traek):
@@ -44,14 +54,18 @@ export_columns_display_map = {
     "Level_4": "Level_4",
     "Level_5": "Level_5",
     "Level_6": "Level_6",
+    "Status": "Status",
+    "Reg. nr.": "Reg. nr.",
+    "Årgang": "Årgang",
+    "Reg.dato": "Reg.dato",
+    "Afg.dato": "Afg.dato",
+    "Stel nr. ": "Stel nr. ",
     "Art": "Art",
     "Træk": "Træk",
     "Drivmiddel": "Drivmiddel",
-    "Reg. nr.": "Reg. nr.",
     "Mærke": "Mærke",
     "Model": "Model",
     "Anvendelse": "Anvendelse",
-    "Stel nr. ": "Stel nr. "
 }
 
 
