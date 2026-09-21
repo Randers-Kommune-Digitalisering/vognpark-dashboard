@@ -331,6 +331,17 @@ def get_vognpark_overview():
                     export_df["Træk"] = export_df["Træk"].map(
                         lambda x: "Ja" if x is True else "Nej" if x is False else x
                     )
+                for dato_col in ("Afg.dato", "Reg.dato"):
+                    if dato_col in export_df.columns:
+                        export_df[dato_col] = export_df[dato_col].map(
+                            lambda x: (
+                                ""
+                                if pd.notna(pd.to_datetime(x, errors="coerce"))
+                                and pd.to_datetime(x, errors="coerce")
+                                == pd.Timestamp("1900-01-01")
+                                else x
+                            )
+                        )
 
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
