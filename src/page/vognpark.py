@@ -369,13 +369,20 @@ def get_vognpark_overview():
                 is_udgaaet = not is_active_vehicle(row["Afg.dato"])
                 status = "Udgået" if is_udgaaet else "Aktiv"
 
-                afg_dato = (
-                    pd.to_datetime(row["Afg.dato"], errors="coerce")
+                afg_dato_value = pd.to_datetime(
+                    row["Afg.dato"], errors="coerce"
                 )
                 afg_dato = (
-                    f"{afg_dato.day:02d}-{afg_dato.month:02d}-{afg_dato.year:04d}"
-                    if pd.notna(afg_dato)
+                    afg_dato_value.strftime("%d-%m-%Y")
+                    if pd.notna(afg_dato_value)
                     else None
+                )
+                afg_dato_html = (
+                    '<p style="margin:0.2rem 0;"><strong>Afg.dato:</strong> '
+                    f"{afg_dato}</p>"
+                    if pd.notna(afg_dato_value)
+                    and afg_dato_value != pd.Timestamp("1900-01-01")
+                    else ""
                 )
 
                 aargang = (
@@ -431,8 +438,7 @@ def get_vognpark_overview():
                                 <p style="margin:0.2rem 0;"><strong>Indregistrering:</strong> {reg_dato or 'Ikke oplyst'}</p>
                                 <p style="margin:0.2rem 0;"><strong>Status:</strong> {status}</p>
                                 <p style="margin:0.2rem 0;"><strong>Mærke:</strong> {maerke or 'Ikke oplyst'}</p>
-                                <p style="margin:0.2rem 0;"><strong>Afg.dato:</strong> {afg_dato}</p>
-                                <p style="margin:0.2rem 0;"><strong>Forvaltning:</strong> {level_1_display_map.get(row['Level_1'], row['Level_1'])}</p>
+                                {afg_dato_html}<p style="margin:0.2rem 0;"><strong>Forvaltning:</strong> {level_1_display_map.get(row['Level_1'], row['Level_1'])}</p>
                                 <p style="margin:0.2rem 0;"><strong>Enhed:</strong> {most_specific_level}</p>
                             </div>
                             <div style="flex:0.5; text-align:center;">
